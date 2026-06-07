@@ -2601,3 +2601,5 @@ region=ap-southeast-1
         assert!(model_provider.cached_credentials().is_some());
     }
 }
+
+pub mod qwen;
