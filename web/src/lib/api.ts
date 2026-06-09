@@ -13,6 +13,9 @@ import type {
   ChannelDetail,
   SessionMessagesResponse,
   TuiEntry,
+  PluginListResponse,
+  McpServerEntry,
+  McpBundleEntry,
 } from "../types/api";
 import { clearToken, getToken, setToken } from "./auth";
 import { apiOrigin, basePath } from "./basePath";
@@ -1732,4 +1735,24 @@ export function getCliTools(): Promise<CliTool[]> {
       return Array.isArray(result) ? result : [];
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Plugins
+// ---------------------------------------------------------------------------
+
+export function getPlugins(): Promise<PluginListResponse> {
+  return apiFetch<PluginListResponse>("/api/plugins");
+}
+
+// ---------------------------------------------------------------------------
+// MCP Dashboard
+// ---------------------------------------------------------------------------
+
+export function getMcpServers(): Promise<{ servers: McpServerEntry[] }> {
+  return apiFetch<{ servers: McpServerEntry[] }>("/api/mcp/servers");
+}
+
+export function getMcpBundles(): Promise<{ bundles: McpBundleEntry[] }> {
+  return apiFetch<{ bundles: McpBundleEntry[] }>("/api/mcp/bundles");
 }

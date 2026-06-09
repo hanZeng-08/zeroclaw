@@ -288,3 +288,33 @@ export interface TuiEntry {
   peer_label: string;
   transport: string;
 }
+
+export interface PluginInfo {
+  name: string;
+  version: string;
+  description: string;
+  capabilities: string[];
+  loaded: boolean;
+}
+
+export interface PluginListResponse {
+  plugins_enabled: boolean;
+  plugins_dir: string;
+  plugins: PluginInfo[];
+}
+
+export interface McpServerEntry {
+  name: string;
+  command?: string | null;
+  args?: string[] | null;
+  env?: Record<string, string> | null;
+  url?: string | null;
+  enabled: boolean;
+  tools?: string[];
+}
+
+export interface McpBundleEntry {
+  name: string;
+  servers: string[];
+  enabled: boolean;
+}

@@ -12,7 +12,9 @@ import {
   Doctor,
   Integrations,
   Logs,
+  McpDashboard,
   Pairing,
+  Plugins,
   Quickstart,
   Tools,
 } from './lazyPages';
@@ -51,6 +53,8 @@ export const Router = () => (
         <Route path="/pairing" element={<Pairing />} />
         <Route path="/canvas" element={<Canvas />} />
         <Route path="/quickstart" element={<Quickstart />} />
+        <Route path="/plugins" element={<Plugins />} />
+        <Route path="/mcp" element={<McpDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

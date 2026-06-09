@@ -13,3 +13,5 @@ export const Doctor = lazy(() => import('../pages/Doctor'));
 export const Pairing = lazy(() => import('../pages/Pairing'));
 export const Canvas = lazy(() => import('../pages/Canvas'));
 export const Quickstart = lazy(() => import('../pages/quickstart/Quickstart'));
+export const Plugins = lazy(() => import('../pages/Plugins'));
+export const McpDashboard = lazy(() => import('../pages/McpDashboard'));
