@@ -106,6 +106,7 @@ use uuid::Uuid;
     feature = "channel-whatsapp-cloud"
 ))]
 use zeroclaw_api::channel::{Channel, SendMessage};
+use zeroclaw_api::memory_traits::MemoryStrategy;
 use zeroclaw_api::tool::ToolSpec;
 #[cfg(feature = "channel-email")]
 use zeroclaw_channels::gmail_push::GmailPushChannel;
@@ -122,6 +123,7 @@ use zeroclaw_config::schema::Config;
 use zeroclaw_infra::session_backend::SessionBackend;
 use zeroclaw_memory::{self, Memory, MemoryCategory};
 use zeroclaw_providers::{self, ModelProvider};
+use zeroclaw_runtime::agent::memory_strategy::DefaultMemoryStrategy;
 use zeroclaw_runtime::cost::CostTracker;
 use zeroclaw_runtime::i18n;
 use zeroclaw_runtime::platform;
@@ -433,6 +435,7 @@ pub struct AppState {
     /// `Option<f64>` end-to-end; never substitute a hardcoded default.
     pub temperature: Option<f64>,
     pub mem: Arc<dyn Memory>,
+    pub memory_strategy: Arc<dyn MemoryStrategy>,
     pub auto_save: bool,
     /// SHA-256 hash of `X-Webhook-Secret` (hex-encoded), never plaintext.
     pub webhook_secret_hash: Option<Arc<str>>,
@@ -726,6 +729,11 @@ pub async fn run_gateway(
             Arc::new(platform::NativeRuntime::new())
         }
     };
+    let memory_strategy: Arc<dyn MemoryStrategy> = Arc::new(DefaultMemoryStrategy::with_config(
+        mem.clone(),
+        config.memory.clone(),
+        config.data_dir.clone(),
+    ));
     // Gateway is infrastructure — it doesn't run as an agent. Endpoints
     // that need an agent context (`/webhook?agent=`, `/ws/chat?agent=`,
     // ACP `session/new`, agent-scoped tools/memory) take it from the
@@ -1418,6 +1426,7 @@ pub async fn run_gateway(
         model,
         temperature,
         mem,
+        memory_strategy,
         auto_save: config.memory.auto_save,
         webhook_secret_hash,
         pairing,
@@ -3893,6 +3902,11 @@ mod tests {
             model: "test-model".into(),
             temperature: None,
             mem: Arc::new(MockMemory),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(require_pairing, &[])),
@@ -4335,6 +4349,11 @@ mod tests {
             model: "test-model".into(),
             temperature: None,
             mem: Arc::new(MockMemory),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -4414,6 +4433,11 @@ mod tests {
             model: "test-model".into(),
             temperature: None,
             mem: Arc::new(MockMemory),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -4997,7 +5021,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5094,7 +5123,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5207,6 +5241,11 @@ mod tests {
             model: "startup-model".into(),
             temperature: None,
             mem: memory,
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5299,6 +5338,11 @@ mod tests {
             model: "test-model".into(),
             temperature: None,
             mem: memory,
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: true,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5409,7 +5453,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: Some(Arc::from(hash_webhook_secret(&secret))),
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5486,7 +5535,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: Some(Arc::from(hash_webhook_secret(&valid_secret))),
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5568,7 +5622,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: Some(Arc::from(hash_webhook_secret(&secret))),
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5657,7 +5716,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5744,7 +5808,12 @@ mod tests {
             model_provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -5879,7 +5948,12 @@ mod tests {
             model_provider: provider,
             model: "test-model".into(),
             temperature: None,
-            mem: memory,
+            mem: memory.clone(),
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::clone(&memory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -6707,6 +6781,11 @@ mod tests {
             model: "test-model".into(),
             temperature: None,
             mem: memory,
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
@@ -6785,6 +6864,11 @@ mod tests {
             model: "test-model".into(),
             temperature: None,
             mem: memory,
+            memory_strategy: Arc::new(DefaultMemoryStrategy::with_config(
+                Arc::new(MockMemory),
+                zeroclaw_config::schema::MemoryConfig::default(),
+                std::path::PathBuf::new(),
+            )),
             auto_save: false,
             webhook_secret_hash: None,
             pairing: Arc::new(PairingGuard::new(false, &[])),
