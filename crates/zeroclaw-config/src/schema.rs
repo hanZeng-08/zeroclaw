@@ -18908,6 +18908,7 @@ mod tests {
         assert!(both.validate().is_ok());
     }
     use super::*;
+    #[cfg(unix)]
     use std::ffi::OsString;
     #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
@@ -18918,11 +18919,13 @@ mod tests {
     use tokio::sync::MutexGuard;
     use tokio::test;
 
+    #[cfg(unix)]
     struct EnvValueGuard {
         key: &'static str,
         previous: Option<OsString>,
     }
 
+    #[cfg(unix)]
     impl EnvValueGuard {
         fn set(key: &'static str, value: impl AsRef<std::ffi::OsStr>) -> Self {
             let previous = std::env::var_os(key);
@@ -18939,6 +18942,7 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
     impl Drop for EnvValueGuard {
         fn drop(&mut self) {
             // SAFETY: tests that mutate env vars serialize on env_override_lock().
