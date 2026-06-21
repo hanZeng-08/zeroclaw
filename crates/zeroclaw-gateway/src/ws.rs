@@ -453,6 +453,10 @@ async fn handle_socket(
             }
         };
     agent.set_memory_session_id(Some(memory_session_id));
+    // Tag this agent with the WebSocket transport so cron_add can
+    // auto-inject delivery defaults back to this session.
+    agent.set_channel_name("wss");
+    agent.set_channel_reply_target(Some(session_key.clone()));
     if !stored_messages.is_empty() {
         agent.seed_history(&stored_messages);
     }

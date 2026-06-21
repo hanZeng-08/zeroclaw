@@ -3178,6 +3178,31 @@ mod tests {
         );
     }
 
+    #[test]
+    fn cron_delivery_defaults_include_wss_channel() {
+        let mut args = serde_json::json!({
+            "job_type": "agent",
+            "prompt": "remind me later",
+            "schedule": { "kind": "cron", "expr": "0 18 * * *" }
+        });
+
+        maybe_inject_channel_delivery_defaults(
+            "cron_add",
+            &mut args,
+            "wss",
+            Some("gw_02e6dcba-a913-456e-9a6b-5e151ac83dcd"),
+        );
+
+        assert_eq!(
+            args["delivery"],
+            serde_json::json!({
+                "mode": "announce",
+                "channel": "wss",
+                "to": "gw_02e6dcba-a913-456e-9a6b-5e151ac83dcd",
+            })
+        );
+    }
+
     // ── truncate_tool_result tests ────────────────────────────────
 
     #[test]

@@ -202,6 +202,13 @@ pub struct Agent {
     /// at most once per session even though the multimodal pipeline re-walks
     /// the full conversation history on every turn and tool iteration.
     image_cache: zeroclaw_providers::multimodal::LocalImageCache,
+    /// Channel name for delivery-default injection in cron_add and other
+    /// channel-aware tools. Defaults to `"cli"` for non-channel paths.
+    channel_name: String,
+    /// Channel reply target (e.g. session key, Discord channel ID, Telegram
+    /// chat ID). Used by delivery-default injection when scheduling cron
+    /// jobs back to the current conversation.
+    channel_reply_target: Option<String>,
 }
 
 impl Drop for Agent {
@@ -317,6 +324,8 @@ pub struct AgentBuilder {
     approval_manager: Option<Arc<ApprovalManager>>,
     agent_alias: Option<String>,
     exclude_memory: bool,
+    channel_name: Option<String>,
+    channel_reply_target: Option<String>,
 }
 
 impl Default for AgentBuilder {
@@ -359,6 +368,8 @@ impl AgentBuilder {
             approval_manager: None,
             agent_alias: None,
             exclude_memory: false,
+            channel_name: None,
+            channel_reply_target: None,
         }
     }
 
@@ -544,6 +555,21 @@ impl AgentBuilder {
         self
     }
 
+    /// Set the channel name for delivery-default injection (e.g. `"wss"`,
+    /// `"discord"`, `"telegram"`). Defaults to `"cli"`.
+    pub fn channel_name(mut self, name: impl Into<String>) -> Self {
+        self.channel_name = Some(name.into());
+        self
+    }
+
+    /// Set the channel reply target (e.g. session key, Discord channel ID).
+    /// Used by delivery-default injection when scheduling cron jobs back to
+    /// the current conversation.
+    pub fn channel_reply_target(mut self, target: impl Into<String>) -> Self {
+        self.channel_reply_target = Some(target.into());
+        self
+    }
+
     pub fn build(self) -> Result<Agent> {
         let mut tools = self.tools.ok_or_else(|| {
             ::zeroclaw_log::record!(
@@ -685,6 +711,8 @@ impl AgentBuilder {
             agent_alias: self.agent_alias.unwrap_or_default(),
             channel_handles: AgentChannelHandles::default(),
             image_cache: zeroclaw_providers::multimodal::LocalImageCache::new(),
+            channel_name: self.channel_name.unwrap_or_else(|| "cli".into()),
+            channel_reply_target: self.channel_reply_target,
         })
     }
 }
@@ -878,6 +906,21 @@ impl Agent {
 
     pub fn set_tool_dispatcher(&mut self, tool_dispatcher: Box<dyn ToolDispatcher>) {
         self.tool_dispatcher = tool_dispatcher;
+    }
+
+    /// Set the channel name for delivery-default injection.
+    /// Used by WebSocket / gateway paths to identify the transport
+    /// (e.g. `"wss"`) so `cron_add` can auto-inject delivery config.
+    pub fn set_channel_name(&mut self, name: impl Into<String>) {
+        self.channel_name = name.into();
+    }
+
+    /// Set the channel reply target for delivery-default injection.
+    /// Used by WebSocket / gateway paths to pass the session key
+    /// (or Discord channel ID, Telegram chat ID, etc.) so `cron_add`
+    /// can auto-inject delivery config.
+    pub fn set_channel_reply_target(&mut self, target: Option<impl Into<String>>) {
+        self.channel_reply_target = target.map(Into::into);
     }
 
     /// Return the names of all registered tools.  Test-only — avoids
@@ -1969,8 +2012,8 @@ impl Agent {
                     temperature: self.temperature,
                     silent: false,
                     approval: self.approval_manager.as_deref(),
-                    channel_name: "cli",
-                    channel_reply_target: None,
+                    channel_name: &self.channel_name,
+                    channel_reply_target: self.channel_reply_target.as_deref(),
                     multimodal_config: &self.multimodal_config,
                     max_tool_iterations: self.config.resolved.max_tool_iterations,
                     cancellation_token: None,
@@ -2362,8 +2405,8 @@ impl Agent {
                         temperature: self.temperature,
                         silent: true,
                         approval: self.approval_manager.as_deref(),
-                        channel_name: "cli",
-                        channel_reply_target: None,
+                        channel_name: &self.channel_name,
+                        channel_reply_target: self.channel_reply_target.as_deref(),
                         multimodal_config: &self.multimodal_config,
                         max_tool_iterations: self.config.resolved.max_tool_iterations,
                         cancellation_token: cancel_token.clone(),
