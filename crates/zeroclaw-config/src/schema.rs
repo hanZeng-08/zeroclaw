@@ -842,6 +842,13 @@ pub struct ModelProviderConfig {
     #[tab(Advanced)]
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub pricing: HashMap<String, f64>,
+    /// Whether stored assistant reasoning should be replayed on outbound
+    /// assistant history messages. `Some(false)` strips `reasoning_content`
+    /// and `reasoning` before sending. `None` (default) honours the provider's
+    /// built-in default (true for most compat providers, false for Groq).
+    #[tab(Advanced)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replay_assistant_reasoning: Option<bool>,
     /// Override the provider's default for native tool calling.
     /// `None` (default) honors the provider's built-in choice. `Some(true)`
     /// forces native tool calls on, `Some(false)` forces text-fallback.
