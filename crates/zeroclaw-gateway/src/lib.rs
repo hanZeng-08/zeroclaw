@@ -891,16 +891,8 @@ pub async fn run_gateway(
             // omission is not a grant). Wiring here, inside the resolved-agent
             // arm, means a gateway with no resolved agent gets no MCP servers,
             // and the previous unscoped/ungated global registration is gone.
-            // ── #8302: when the first enabled agent has no mcp_bundles, fall
-            // back to all configured servers so the dashboard tools page still
-            // shows them. Runtime per-agent access is still gated by
-            // SecurityPolicy::is_tool_allowed / eager_mcp_tool_allowed.
             let agent_mcp_servers = if config.mcp.enabled {
-                let mut servers = config.mcp_servers_for_agent(agent_alias);
-                if servers.is_empty() {
-                    servers = config.mcp.servers.clone();
-                }
-                servers
+                config.mcp_servers_for_agent(agent_alias)
             } else {
                 Vec::new()
             };
@@ -4306,64 +4298,6 @@ mod tests {
             names.contains(&"aa_mcp__find_npcs"),
             "allowed MCP tool missing from the gateway registry; got {names:?}"
         );
-    }
-
-    #[test]
-    fn mcp_tools_fallback_to_all_servers_when_first_agent_has_no_bundles() {
-        // #8302 regression: when the first enabled agent has no mcp_bundles,
-        // the gateway tools_registry should still include all configured MCP
-        // servers so the dashboard tools page can discover them.
-        let mut config = Config::default();
-        config.mcp.enabled = true;
-        config
-            .mcp
-            .servers
-            .push(zeroclaw_config::schema::McpServerConfig {
-                name: "fs".to_string(),
-                command: "npx".to_string(),
-                args: vec![
-                    "-y".to_string(),
-                    "@modelcontextprotocol/server-filesystem".to_string(),
-                    "/tmp".to_string(),
-                ],
-                env: std::collections::HashMap::new(),
-                tool_timeout_secs: None,
-                transport: zeroclaw_config::schema::McpTransport::Stdio,
-                url: None,
-                headers: std::collections::HashMap::new(),
-            });
-
-        // First enabled agent has NO mcp_bundles
-        config.agents.insert(
-            "agent-a".to_string(),
-            zeroclaw_config::schema::AliasedAgentConfig {
-                enabled: true,
-                ..Default::default()
-            },
-        );
-
-        let tmp = tempfile::TempDir::new().unwrap();
-        let data_dir = tmp.path().join("workspace");
-        std::fs::create_dir_all(&data_dir).unwrap();
-        config.data_dir = data_dir;
-        config.config_path = tmp.path().join("config.toml");
-
-        let agent_mcp_servers = if config.mcp.enabled {
-            let mut servers = config.mcp_servers_for_agent("agent-a");
-            if servers.is_empty() {
-                servers = config.mcp.servers.clone();
-            }
-            servers
-        } else {
-            Vec::new()
-        };
-
-        assert!(
-            !agent_mcp_servers.is_empty(),
-            "agent_mcp_servers should fall back to all configured servers when agent has no bundles"
-        );
-        assert_eq!(agent_mcp_servers.len(), 1);
-        assert_eq!(agent_mcp_servers[0].name, "fs");
     }
 
     #[test]

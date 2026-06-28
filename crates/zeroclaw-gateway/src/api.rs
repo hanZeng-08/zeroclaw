@@ -305,7 +305,7 @@ pub async fn handle_api_status(
     Json(body).into_response()
 }
 
-/// GET /api/tools — list registered tool specs
+/// GET /api/tools — list registered tool specs and configured MCP servers
 pub async fn handle_api_tools(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -326,7 +326,29 @@ pub async fn handle_api_tools(
         })
         .collect();
 
-    Json(serde_json::json!({"tools": tools})).into_response()
+    let mcp_servers: Vec<serde_json::Value> = {
+        let cfg = state.config.read();
+        if cfg.mcp.enabled {
+            cfg.mcp
+                .servers
+                .iter()
+                .map(|s| {
+                    serde_json::json!({
+                        "name": s.name,
+                        "transport": s.transport,
+                        "url": s.url,
+                        "command": s.command,
+                        "args": s.args,
+                        "tool_timeout_secs": s.tool_timeout_secs,
+                    })
+                })
+                .collect()
+        } else {
+            Vec::new()
+        }
+    };
+
+    Json(serde_json::json!({"tools": tools, "mcp_servers": mcp_servers})).into_response()
 }
 
 /// GET /api/cron — list cron jobs
