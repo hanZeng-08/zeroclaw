@@ -58,7 +58,8 @@ function loadCatalog(): Promise<CatalogEntry[]> {
   if (catalogCache) return Promise.resolve(catalogCache);
   if (catalogPromise) return catalogPromise;
   catalogPromise = Promise.all([getTools(), getCliTools()])
-    .then(([tools, cliTools]) => {
+    .then(([resp, cliTools]) => {
+      const tools = resp.tools;
       const agent: CatalogEntry[] = tools.map((tnt: ToolSpec) => ({
         name: tnt.name,
         description: tnt.description,
